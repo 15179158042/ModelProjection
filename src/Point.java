@@ -5,38 +5,38 @@ import java.util.Objects;
  * @date 2021/8/28 - 20:20
  */
 public class Point {
-    private float x;
-    private float y;
-    private float z;
+    private double x;
+    private double y;
+    private double z;
 
     public Point(){}
-    public Point(float x,float y,float z){
+    public Point(double x,double y,double z){
         this.x = x;
         this.y = y;
         this.z = z;
     }
 
-    public float getX() {
+    public double getX() {
         return x;
     }
 
-    public void setX(float x) {
+    public void setX(double x) {
         this.x = x;
     }
 
-    public float getY() {
+    public double getY() {
         return y;
     }
 
-    public void setY(float y) {
+    public void setY(double y) {
         this.y = y;
     }
 
-    public float getZ() {
+    public double getZ() {
         return z;
     }
 
-    public void setZ(float z) {
+    public void setZ(double z) {
         this.z = z;
     }
 
@@ -54,7 +54,7 @@ public class Point {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Point point = (Point) o;
-        return Float.compare(point.x, x) == 0 && Float.compare(point.y, y) == 0 && Float.compare(point.z, z) == 0;
+        return Double.compare(point.x, x) == 0 && Double.compare(point.y, y) == 0 && Double.compare(point.z, z) == 0;
     }
 
     @Override

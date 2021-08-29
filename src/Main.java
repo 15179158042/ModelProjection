@@ -8,8 +8,10 @@ import java.util.Map;
 public class Main {
     public static void main(String[] args) {
         try {
-            Model model = new Model("C:\\Users\\10484\\IdeaProjects\\ModelProjection\\ESB零件库\\Rectangular-Cubic-Prism\\Rectangular-Cubic Prism\\Bearing Blocks\\advgr01.STL");
-
+           //  Model model = new Model("C:\\Users\\10484\\IdeaProjects\\ModelProjection\\ESB零件库\\Rectangular-Cubic-Prism\\Rectangular-Cubic Prism\\Bearing Blocks\\advgr01.STL");
+            // System.out.println(model.getLineList());
+            ViewPoint.initialViewPoints(12,6);
+            System.out.println(ViewPoint.matrixList);
         }catch (Exception e){
             e.printStackTrace();
         }
