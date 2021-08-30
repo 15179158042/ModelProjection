@@ -59,7 +59,7 @@ public class ViewPoint {
             u.setY( -1.0 * n.getX() / n.getY());
             u.setZ(0);
         }else{
-            u.setX(-1.0 * n.getY()/n.getX());
+            u.setX(0);
             u.setY(1);
             u.setZ(0);
         }

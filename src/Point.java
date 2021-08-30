@@ -16,6 +16,16 @@ public class Point {
         this.z = z;
     }
 
+    public Point(Point another){
+        x = another.getX();
+        y = another.getY();
+        z = another.getZ();
+    }
+
+    public Vector minus(Point another){
+        return new Vector(this.x - another.x,this.y - another.y,this.z - another.z);
+    }
+
     public double getX() {
         return x;
     }

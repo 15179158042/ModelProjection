@@ -16,16 +16,23 @@ public class Vector {
         this.z = z;
     }
 
+    public Vector(Vector another){
+        this.x = another.getX();
+        this.y = another.getY();
+        this.z = another.getZ();
+    }
+
     public Vector cross(Vector another){
-        double newX = this.y * another.z - this.z * another.y;
-        double newY = this.z * another.x - this.x * another.z;
-        double newZ = this.x * another.y - this.y * another.x;
+        double newX = Util.remainPoint4(this.y * another.z - this.z * another.y);
+        double newY = Util.remainPoint4(this.z * another.x - this.x * another.z);
+        double newZ = Util.remainPoint4(this.x * another.y - this.y * another.x);
         Vector newVector = new Vector(newX, newY, newZ);
         return newVector;
     }
 
+
     public double dot(Vector another){
-        return this.x * another.x +this.y * another.y + this.z * another.z;
+        return Util.remainPoint4(this.x * another.x +this.y * another.y + this.z * another.z);
     }
 
     public void reverse(){
@@ -36,9 +43,11 @@ public class Vector {
 
     public void unify(){
         double norm = getNorm();
-        x = x/norm;
-        y = y/norm;
-        z = z/norm;
+        if (norm != 0) {
+            x = Util.remainPoint4(x / norm);
+            y = Util.remainPoint4(y / norm);
+            z = Util.remainPoint4(z / norm);
+        }
     }
 
     public double getNorm(){

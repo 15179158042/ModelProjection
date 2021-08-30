@@ -18,6 +18,17 @@ public class Triangle {
 
     public Triangle(){}
 
+    public Triangle(Triangle another){
+        if (null != another.getA())
+            a = new Point(another.getA());
+        if (null != another.getB())
+            b = new Point(another.getB());
+        if (null != another.getC())
+            c = new Point(another.getC());
+        if (null != another.getN())
+            n = new Vector(another.getN());
+    }
+
     public Triangle(Point a,Point b,Point c,Vector n){
         this.a = a;
         this.b = b;

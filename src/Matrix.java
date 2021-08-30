@@ -16,9 +16,9 @@ public class Matrix {
     }
 
     public Point transform(Point another){
-        double x = arrays[0][0] * another.getX() + arrays[0][1] * another.getY() + arrays[0][2] * another.getZ() + arrays[0][3];
-        double y = arrays[1][0] * another.getX() + arrays[1][1] * another.getY() + arrays[1][2] * another.getZ() + arrays[1][3];
-        double z = arrays[2][0] * another.getX() + arrays[2][1] * another.getY() + arrays[2][2] * another.getZ() + arrays[2][3];
+        double x = Util.remainPoint4(arrays[0][0] * another.getX() + arrays[0][1] * another.getY() + arrays[0][2] * another.getZ() + arrays[0][3]);
+        double y = Util.remainPoint4(arrays[1][0] * another.getX() + arrays[1][1] * another.getY() + arrays[1][2] * another.getZ() + arrays[1][3]);
+        double z = Util.remainPoint4(arrays[2][0] * another.getX() + arrays[2][1] * another.getY() + arrays[2][2] * another.getZ() + arrays[2][3]);
         return new Point(x, y, z);
     }
 
