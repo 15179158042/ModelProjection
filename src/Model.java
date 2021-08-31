@@ -7,10 +7,7 @@ import org.opencv.imgcodecs.Imgcodecs;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * @author Liuhaifeng
@@ -39,6 +36,9 @@ public class Model {
      */
     private Map<String,Double> minMaxValue = new HashMap<>();
 
+    /**
+     * 获得ViewPoint中的所有的变换矩阵
+     */
     private static List<Matrix> matrixList = ViewPoint.matrixList;
 
     static {
@@ -46,6 +46,14 @@ public class Model {
         System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
     }
 
+    /**
+     * 无参构造
+     */
+    public Model(){}
+
+    /**
+     * 读取模型的所有点的数据，提取其中的边，并且归一化模型数据
+     */
     public Model(String modelPath) throws IOException {
         BufferedReader in = new BufferedReader(new FileReader(modelPath));
         initialMinMaxValue(this.minMaxValue);
@@ -60,33 +68,37 @@ public class Model {
                 switch (index){
                     case 0:{
                         String[] strings = str.split(" ");
-                        double x = Double.parseDouble(strings[2]);
-                        double y = Double.parseDouble(strings[3]);
-                        double z = Double.parseDouble(strings[4]);
+                        int length = strings.length;
+                        double x = Double.parseDouble(strings[length-3]);
+                        double y = Double.parseDouble(strings[length-2]);
+                        double z = Double.parseDouble(strings[length-1]);
                         n = new Vector(x, y, z);
                         break;
                     }
                     case 2:{
                         String[] strings = str.split(" ");
-                        double x = Double.parseDouble(strings[1]);
-                        double y = Double.parseDouble(strings[2]);
-                        double z = Double.parseDouble(strings[3]);
+                        int length = strings.length;
+                        double x = Double.parseDouble(strings[length-3]);
+                        double y = Double.parseDouble(strings[length-2]);
+                        double z = Double.parseDouble(strings[length-1]);
                         a = new Point(x, y, z);
                         break;
                     }
                     case 3:{
                         String[] strings = str.split(" ");
-                        double x = Double.parseDouble(strings[1]);
-                        double y = Double.parseDouble(strings[2]);
-                        double z = Double.parseDouble(strings[3]);
+                        int length = strings.length;
+                        double x = Double.parseDouble(strings[length-3]);
+                        double y = Double.parseDouble(strings[length-2]);
+                        double z = Double.parseDouble(strings[length-1]);
                         b = new Point(x, y, z);
                         break;
                     }
                     case 4:{
                         String[] strings = str.split(" ");
-                        double x = Double.parseDouble(strings[1]);
-                        double y = Double.parseDouble(strings[2]);
-                        double z = Double.parseDouble(strings[3]);
+                        int length = strings.length;
+                        double x = Double.parseDouble(strings[length-3]);
+                        double y = Double.parseDouble(strings[length-2]);
+                        double z = Double.parseDouble(strings[length-1]);
                         c = new Point(x, y, z);
                         break;
                     }
@@ -131,38 +143,444 @@ public class Model {
             Vector leftNormal = leftTriangle.getN();
             Vector rightNormal = rightTriangle.getN();
             double angle = leftNormal.getAngle(rightNormal);
-            if (angle > 30)
+            if (angle > 10)
                 lineList.add(tempLine);
         }
         unify();
     }
 
-    public Mat getPicture(int index){
+    /**
+     * 剖面后得到的模型
+     * 0 -- x-y平面剖 z = 0；
+     * 1 -- x-z平面剖 y = 0；
+     * 2 -- y-z平面剖 x = 0；
+     */
+    public Model Split(int type){
+        Model afterSplitModel = new Model();
+        List<Triangle> afterSplitTriangleList = new ArrayList<>();
+        List<Triangle> unSplitTriangleList = new ArrayList<>();
+        List<Line> afterSplitLineList = new ArrayList<>();
+        List<Line> unSplitLineList = new ArrayList<>();
+        for (Triangle triangle : triangleList) {
+            int negativeCount = 0;
+            switch (type) {
+                case 0: {
+                    for (Point point : new Point[]{triangle.getA(), triangle.getB(), triangle.getC()}) {
+                        if (point.getZ() < 0) {
+                            negativeCount++;
+                        }
+                    }
+                    break;
+                }
+                case 1:{
+                    for (Point point : new Point[]{triangle.getA(), triangle.getB(), triangle.getC()}) {
+                        if (point.getY() < 0) {
+                            negativeCount++;
+                        }
+                    }
+                    break;
+                }
+                case 2:{
+                    for (Point point : new Point[]{triangle.getA(), triangle.getB(), triangle.getC()}) {
+                        if (point.getX() < 0) {
+                            negativeCount++;
+                        }
+                    }
+                    break;
+                }
+            }
+            switch (negativeCount) {
+                case 0: {
+                    unSplitTriangleList.add(triangle);
+                    break;
+                }
+                case 1:
+                    ;
+                case 2: {
+                    splitIntoTwoOrMorePart(triangle, afterSplitTriangleList, unSplitTriangleList, type);
+                    break;
+                }
+                case 3: {
+                    afterSplitTriangleList.add(triangle);
+                    break;
+                }
+            }
+        }
+        for (Line line : lineList){
+            int negativeCount = 0;
+            switch (type) {
+                case 0: {
+                    for (Point point : new Point[]{line.getBegin(),line.getEnd()}) {
+                        if (point.getZ() < 0) {
+                            negativeCount++;
+                        }
+                    }
+                    break;
+                }
+                case 1:{
+                    for (Point point : new Point[]{line.getBegin(),line.getEnd()}) {
+                        if (point.getY() < 0) {
+                            negativeCount++;
+                        }
+                    }
+                    break;
+                }
+                case 2:{
+                    for (Point point : new Point[]{line.getBegin(),line.getEnd()}) {
+                        if (point.getX() < 0) {
+                            negativeCount++;
+                        }
+                    }
+                    break;
+                }
+            }
+            switch (negativeCount) {
+                case 0: {
+                    unSplitLineList.add(line);
+                    break;
+                }
+                case 1:
+                    splitIntoTwoPart(line,afterSplitLineList,unSplitLineList,type);
+                    break;
+                case 2: {
+                    afterSplitLineList.add(line);
+                    break;
+                }
+            }
+        }
+        afterSplitModel.setTriangleList(afterSplitTriangleList);
+        afterSplitModel.setLineList(afterSplitLineList);
+        return afterSplitModel;
+    }
+
+    private void splitIntoTwoOrMorePart(Triangle triangle, List<Triangle> afterSplitTriangleList, List<Triangle> unSplitTriangleList,int type){
+        Point A = triangle.getA();
+        Point B = triangle.getB();
+        Point C = triangle.getC();
+        List<Point> pointList = new ArrayList<>();
+        pointList.add(A);
+        pointList.add(B);
+        pointList.add(C);
+        Line[] lines = new Line[]{new Line(A,B), new Line(B,C) ,new Line(C,A)};
+        Map<Point,Integer> pointCount = new HashMap<>();
+        switch (type){
+            case 0:{
+                for (Line temp : lines){
+                    Point begin = temp.getBegin();
+                    Point end = temp.getEnd();
+                    if (begin.getZ() > end.getZ()){
+                        begin = temp.getEnd();
+                        end = temp.getBegin();
+                    }
+                    if (begin.getZ() < 0 && end.getZ() >0){
+                        double xRation = (end.getX() - begin.getX()) / (end.getZ() - begin.getZ());
+                        double yRation = (end.getY() - begin.getY()) / (end.getZ() - begin.getZ());
+                        Point newPoint = new Point(begin.getX() + xRation * (0 - begin.getZ())
+                                        ,begin.getY() + yRation * (0 - begin.getZ())
+                                        ,0);
+                        pointList.add(newPoint);
+                        pointCount.put(begin,pointCount.getOrDefault(begin,0)+1);
+                        pointCount.put(end,pointCount.getOrDefault(end,0)+1);
+                    }
+                }
+                break;
+            }
+            case 1:{
+                for (Line temp : lines){
+                    Point begin = temp.getBegin();
+                    Point end = temp.getEnd();
+                    if (begin.getY() > end.getY()){
+                        begin = temp.getEnd();
+                        end = temp.getBegin();
+                    }
+                    if (begin.getY() < 0 && end.getY() >0){
+                        double xRation = (end.getX() - begin.getX()) / (end.getY() - begin.getY());
+                        double zRation = (end.getZ() - begin.getZ()) / (end.getY() - begin.getY());
+                        Point newPoint = new Point(begin.getX() + xRation * (0 - begin.getY())
+                                ,0
+                                ,begin.getZ() + zRation * (0 - begin.getY()));
+                        pointList.add(newPoint);
+                        pointCount.put(begin,pointCount.getOrDefault(begin,0)+1);
+                        pointCount.put(end,pointCount.getOrDefault(end,0)+1);
+                    }
+                }
+                break;
+            }
+            case 2:{
+                for (Line temp : lines){
+                    Point begin = temp.getBegin();
+                    Point end = temp.getEnd();
+                    if (begin.getX() > end.getX()){
+                        begin = temp.getEnd();
+                        end = temp.getBegin();
+                    }
+                    if (begin.getX() < 0 && end.getX() >0){
+                        double yRation = (end.getY() - begin.getY()) / (end.getX() - begin.getX());
+                        double zRation = (end.getZ() - begin.getZ()) / (end.getX() - begin.getX());
+                        Point newPoint = new Point(0
+                                ,begin.getY() + yRation * (0 - begin.getX())
+                                ,begin.getZ() + zRation * (0 - begin.getX()));
+                        pointList.add(newPoint);
+                        pointCount.put(begin,pointCount.getOrDefault(begin,0)+1);
+                        pointCount.put(end,pointCount.getOrDefault(end,0)+1);
+                    }
+                }
+                break;
+            }
+        }
+        if (pointList.size() == 3) {
+            afterSplitTriangleList.add(triangle);
+        }else if (pointList.size() == 4){
+            for (Point point : new Point[]{A,B,C}){
+                if (pointCount.get(point) == 0){
+                    for (Point point1 : new Point[]{A,B,C}){
+                        if (point != point1){
+                           Triangle newTriangle = new Triangle(point, point1,pointList.get(3),null);
+                           switch (type){
+                               case 0:{
+                                   if (point1.getZ() < 0){
+                                       afterSplitTriangleList.add(newTriangle);
+                                   }else {
+                                       unSplitTriangleList.add(newTriangle);
+                                   }
+                                   break;
+                               }
+                               case 1:{
+                                   if (point1.getY() < 0){
+                                       afterSplitTriangleList.add(newTriangle);
+                                   }else {
+                                       unSplitTriangleList.add(newTriangle);
+                                   }
+                                   break;
+                               }
+                               case 2:{
+                                   if (point1.getX() < 0){
+                                       afterSplitTriangleList.add(newTriangle);
+                                   }else {
+                                       unSplitTriangleList.add(newTriangle);
+                                   }
+                                   break;
+                               }
+                           }
+                        }
+                    }
+                }
+            }
+        }else {
+            for (Point point : new Point[]{A,B,C}){
+                if (pointCount.get(point) == 2){
+                    Triangle newTriangle = new Triangle(point,pointList.get(3),pointList.get(4),null);
+                    switch (type) {
+                        case 0: {
+                            if (point.getZ() < 0) {
+                                afterSplitTriangleList.add(newTriangle);
+                            } else {
+                                unSplitTriangleList.add(newTriangle);
+                            }
+                            break;
+                        }
+                        case 1: {
+                            if (point.getY() < 0) {
+                                afterSplitTriangleList.add(newTriangle);
+                            } else {
+                                unSplitTriangleList.add(newTriangle);
+                            }
+                            break;
+                        }
+                        case 2: {
+                            if (point.getX() < 0) {
+                                afterSplitTriangleList.add(newTriangle);
+                            } else {
+                                unSplitTriangleList.add(newTriangle);
+                            }
+                            break;
+                        }
+                    }
+                }else{
+                    for (Point point1 : new Point[]{A,B,C}){
+                        if (point != point1 && pointCount.get(point1) == 1){
+                            Triangle newTriangle = new Triangle(point, point1,pointList.get(3),null);
+                            switch (type) {
+                                case 0: {
+                                    if (point.getZ() < 0) {
+                                        afterSplitTriangleList.add(newTriangle);
+                                    } else {
+                                        unSplitTriangleList.add(newTriangle);
+                                    }
+                                    break;
+                                }
+                                case 1: {
+                                    if (point.getY() < 0) {
+                                        afterSplitTriangleList.add(newTriangle);
+                                    } else {
+                                        unSplitTriangleList.add(newTriangle);
+                                    }
+                                    break;
+                                }
+                                case 2: {
+                                    if (point.getX() < 0) {
+                                        afterSplitTriangleList.add(newTriangle);
+                                    } else {
+                                        unSplitTriangleList.add(newTriangle);
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private void splitIntoTwoPart(Line line,List<Line> afterSplitLineList,List<Line> unSplitLineList,int type){
+        Point begin = line.getBegin();
+        Point end = line.getEnd();
+        switch (type){
+            case 0:{
+                if (begin.getZ()==0 || end.getZ()==0)
+                    afterSplitLineList.add(line);
+                else{
+                    double xRatio = (end.getX() - begin.getX()) / (end.getZ() - begin.getZ());
+                    double yRation = (end.getY() - begin.getY()) / (end.getZ() - begin.getZ());
+
+                }
+
+
+                break;
+            }
+        }
+
+    }
+
+    /**
+     * 获得某个投影角度的图片，并展示在桌面上
+     */
+    public void getOnePicture(int index){
         Matrix matrix = matrixList.get(index);
-        int[][] pictureData = getPictureData(matrix);
-        int[] data = new int[256 * 256];
+        int[][] pictureData = getAllLinePictureData(matrix);
+        int[] data = new int[512 * 512];
         int index2 = 0;
-        for (int i = 0;i<256;i++){
-            for(int j=0;j<256;j++){
+        for (int i = 0; i < 512; i++) {
+            for (int j = 0; j < 512; j++) {
                 data[index2++] = pictureData[i][j];
             }
         }
-        Mat picture = new Mat(256,256, CvType.CV_32S);
-        picture.put(0,0,data);
-        Imgcodecs.imwrite("D:\\Desktop\\Picture1.jpg",picture);
-        return picture;
+        Mat picture = new Mat(512, 512, CvType.CV_32S);
+        picture.put(0, 0, data);
+        Imgcodecs.imwrite("D:\\Desktop\\1222.jpg", picture);
     }
 
-    public int[][] getPictureData(Matrix viewMatrix){
-        int[][] pictureData = new int[256][256];
-        for (int i = 0 ;i < 256; i++){
-            for(int j = 0; j < 256; j++){
+    /**
+     * 获得所有的角度的图片
+     */
+    public void getPicture(String filePath){
+        for (int index =0 ; index < 62; index++) {
+            Matrix matrix = matrixList.get(index);
+            int[][] pictureData = getPictureWithFrameData(matrix);
+            int[] data = new int[512 * 512];
+            int index2 = 0;
+            for (int i = 0; i < 512; i++) {
+                for (int j = 0; j < 512; j++) {
+                    data[index2++] = pictureData[i][j];
+                }
+            }
+            Mat picture = new Mat(512, 512, CvType.CV_32S);
+            picture.put(0, 0, data);
+            String path = filePath + "\\" + index + ".jpg";
+            System.out.println("生成第"+index+"张图片");
+            Imgcodecs.imwrite(path, picture);
+        }
+    }
+
+    /**
+     * 获得含有线框的图片数据
+     */
+    public int[][] getPictureWithoutFrameData(Matrix viewMatrix){
+        int[][] pictureData = new int[512][512];
+        Map<String,Double> transformedMinMaxValue = new HashMap<>();
+        List<Triangle> transformedTriangleList = new ArrayList<>();
+        initialPictureData(pictureData, transformedMinMaxValue, transformedTriangleList, viewMatrix);
+        for (Triangle triangle : transformedTriangleList){
+            printToPicture(triangle, pictureData,transformedMinMaxValue);
+        }
+        return pictureData;
+    }
+
+    /**
+     * 获得没有线框的图片数据
+     */
+    public int[][] getPictureWithFrameData(Matrix viewMatrix){
+        int[][] pictureData = new int[512][512];
+        Map<String,Double> transformedMinMaxValue = new HashMap<>();
+        List<Triangle> transformedTriangleList = new ArrayList<>();
+        initialPictureData(pictureData, transformedMinMaxValue, transformedTriangleList, viewMatrix);
+        for (Triangle triangle : transformedTriangleList){
+            printToPicture(triangle, pictureData,transformedMinMaxValue);
+        }
+        for (Line line : lineList){
+            Point begin = viewMatrix.transform(line.getBegin());
+            Point end = viewMatrix.transform(line.getEnd());
+            Line transformedLine = new Line(begin, end);
+            printToPicture(transformedLine, pictureData, transformedMinMaxValue,null);
+        }
+        return pictureData;
+    }
+
+    /**
+     * 获得消隐后的纯线框的图片数据
+     */
+    public int[][] getLineFrameOfPictureDate(Matrix viewMatrix){
+        int[][] pictureData = new int[512][512];
+        Map<String,Double> transformedMinMaxValue = new HashMap<>();
+        List<Triangle> transformedTriangleList = new ArrayList<>();
+        initialPictureData(pictureData,transformedMinMaxValue,transformedTriangleList,viewMatrix);
+        for (Triangle triangle : transformedTriangleList){
+            printToPicture(triangle, pictureData,transformedMinMaxValue);
+        }
+
+        int[][] newPictureData = new int[512][512];
+        for (int i = 0 ;i < 512; i++){
+            for(int j = 0; j < 512; j++){
+                newPictureData[i][j] = 0;
+            }
+        }
+        for (Line line : lineList){
+            Point begin = viewMatrix.transform(line.getBegin());
+            Point end = viewMatrix.transform(line.getEnd());
+            Line transformedLine = new Line(begin, end);
+            printToPicture(transformedLine, pictureData, transformedMinMaxValue ,newPictureData);
+        }
+        return newPictureData;
+    }
+
+    /**
+     * 获得没有消隐的纯线框的数据
+     */
+    public int[][] getAllLinePictureData(Matrix viewMatrix){
+        int[][] pictureData = new int[512][512];
+        Map<String,Double> transformedMinMaxValue = new HashMap<>();
+        List<Triangle> transformedTriangleList = new ArrayList<>();
+        initialPictureData(pictureData,transformedMinMaxValue,transformedTriangleList,viewMatrix);
+        for (Line line : lineList){
+            Point begin = viewMatrix.transform(line.getBegin());
+            Point end = viewMatrix.transform(line.getEnd());
+            Line transformedLine = new Line(begin, end);
+            printToPicture(transformedLine, pictureData, transformedMinMaxValue);
+        }
+        return pictureData;
+    }
+
+    /**
+     * 初始化图片数据，将所有的三角面片经过视口变换，得到新的三角形数据
+     */
+    public void initialPictureData(int[][] pictureData,  Map<String,Double> transformedMinMaxValue,List<Triangle> transformedTriangleList ,Matrix viewMatrix){
+        for (int i = 0 ;i < 512; i++){
+            for(int j = 0; j < 512; j++){
                 pictureData[i][j] = 255;
             }
         }
-        Map<String,Double> transformedMinMaxValue = new HashMap<>();
         initialMinMaxValue(transformedMinMaxValue);
-        List<Triangle> transformedTriangleList = new ArrayList<>();
         for (Triangle triangle : triangleList){
             Point a = viewMatrix.transform(triangle.getA());
             Point b = viewMatrix.transform(triangle.getB());
@@ -175,7 +593,7 @@ public class Model {
             }
         }
         double scale = Double.max(transformedMinMaxValue.get("maxX") - transformedMinMaxValue.get("minX")
-                        , Double.max(transformedMinMaxValue.get("maxY") - transformedMinMaxValue.get("minY")
+                , Double.max(transformedMinMaxValue.get("maxY") - transformedMinMaxValue.get("minY")
                         ,transformedMinMaxValue.get("maxZ") - transformedMinMaxValue.get("minZ")));
         double xScale = (transformedMinMaxValue.get("maxX") - transformedMinMaxValue.get("minX"))/scale;
         double yScale = (transformedMinMaxValue.get("maxY") - transformedMinMaxValue.get("minY"))/scale;
@@ -184,22 +602,11 @@ public class Model {
         transformedMinMaxValue.put("xScale", xScale);
         transformedMinMaxValue.put("yScale", yScale);
         transformedMinMaxValue.put("zScale", zScale);
-        for (Triangle triangle : transformedTriangleList){
-            printToPicture(triangle, pictureData,transformedMinMaxValue);
-        }
-
-        int count = 0;
-        for (Line line : lineList){
-            Point begin = viewMatrix.transform(line.getBegin());
-            Point end = viewMatrix.transform(line.getEnd());
-            Line transformedLine = new Line(begin, end);
-            printToPicture(transformedLine, pictureData, transformedMinMaxValue);
-            System.out.println(count++);
-        }
-
-        return pictureData;
     }
 
+    /**
+     * 三角形面片，经过phong模型投影到图片中，利用z-buffer算法
+     */
     private void printToPicture(Triangle triangle,int[][] pictureData,Map<String,Double> minMaxValue){
         Double minX = Double.min(triangle.getA().getX(),Double.min(triangle.getB().getX(),triangle.getC().getX()));
         Double maxX = Double.max(triangle.getA().getX(),Double.max(triangle.getB().getX(),triangle.getC().getX()));
@@ -208,9 +615,9 @@ public class Model {
         Triangle triangleInScreen = new Triangle();
         int index = 0;
         for (Point point : new Point[]{triangle.getA(),triangle.getB(), triangle.getC()}){
-            double x = 235 * (1 - minMaxValue.get("xScale")) / 2 + 10 + 235 * (point.getX() - minMaxValue.get("minX"))/minMaxValue.get("scale");
-            double y = 235 * (1 - minMaxValue.get("yScale")) / 2 + 10 + 235 * (point.getY() - minMaxValue.get("minY"))/minMaxValue.get("scale");
-            int z = (int)(10 + 235 * (point.getZ() - minMaxValue.get("minZ"))/(minMaxValue.get("maxZ")-minMaxValue.get("minZ")));
+            double x = 492 * (1 - minMaxValue.get("xScale")) / 2 + 10 + 492 * (point.getX() - minMaxValue.get("minX"))/minMaxValue.get("scale");
+            double y = 492 * (1 - minMaxValue.get("yScale")) / 2 + 10 + 492 * (point.getY() - minMaxValue.get("minY"))/minMaxValue.get("scale");
+            int z = (int)(10 + 200 * (point.getZ() - minMaxValue.get("minZ"))/(minMaxValue.get("maxZ")-minMaxValue.get("minZ")));
             switch (index){
                 case 0: {
                     triangleInScreen.setA(new Point(x,y,z));
@@ -231,10 +638,10 @@ public class Model {
                     break;
             }
         }
-        int xMinIndex = (int)(235 * (1 - minMaxValue.get("xScale")) / 2 + 10 + 235 * (minX - minMaxValue.get("minX"))/minMaxValue.get("scale"));
-        int xMaxIndex = (int)(235 * (1 - minMaxValue.get("xScale")) / 2 + 10 + 235 * (maxX - minMaxValue.get("minX"))/minMaxValue.get("scale"));
-        int yMinIndex = (int)(235 * (1 - minMaxValue.get("yScale")) / 2 + 10 + 235 * (minY - minMaxValue.get("minY"))/minMaxValue.get("scale"));
-        int yMaxIndex = (int)(235 * (1 - minMaxValue.get("yScale")) / 2 + 10 + 235 * (maxY - minMaxValue.get("minY"))/minMaxValue.get("scale"));
+        int xMinIndex = (int)(492 * (1 - minMaxValue.get("xScale")) / 2 + 10 + 492 * (minX - minMaxValue.get("minX"))/minMaxValue.get("scale"));
+        int xMaxIndex = (int)(492 * (1 - minMaxValue.get("xScale")) / 2 + 10 + 492 * (maxX - minMaxValue.get("minX"))/minMaxValue.get("scale"));
+        int yMinIndex = (int)(492 * (1 - minMaxValue.get("yScale")) / 2 + 10 + 492 * (minY - minMaxValue.get("minY"))/minMaxValue.get("scale"));
+        int yMaxIndex = (int)(492 * (1 - minMaxValue.get("yScale")) / 2 + 10 + 492 * (maxY - minMaxValue.get("minY"))/minMaxValue.get("scale"));
         for (int i = xMinIndex; i <= xMaxIndex ; i++){
             for (int j = yMinIndex; j <= yMaxIndex ; j++){
                 Point A = new Point(i + 0.5, j + 0.5, 0);
@@ -246,13 +653,86 @@ public class Model {
         }
     }
 
-    private void printToPicture(Line line, int[][] pictureData, Map<String,Double> minMaxValue) {
+    /**
+     * 将不消隐的线，加到图片的数据矩阵中
+     */
+    private void printToPicture(Line line,int[][] pictureData,Map<String,Double> minMaxValue){
         Line lineInScreen = new Line();
         int index = 0;
         for (Point point : new Point[]{line.getBegin(), line.getEnd()}) {
-            double x = (int)(235 * (1 - minMaxValue.get("xScale")) / 2 + 10 + 235 * (point.getX() - minMaxValue.get("minX")) / minMaxValue.get("scale"));
-            double y = (int)(235 * (1 - minMaxValue.get("yScale")) / 2 + 10 + 235 * (point.getY() - minMaxValue.get("minY")) / minMaxValue.get("scale"));
-            int z = (int) (10 + 235 * (point.getZ() - minMaxValue.get("minZ")) / (minMaxValue.get("maxZ") - minMaxValue.get("minZ")));
+            double x = (int)(492 * (1 - minMaxValue.get("xScale")) / 2 + 10 + 492 * (point.getX() - minMaxValue.get("minX")) / minMaxValue.get("scale"));
+            double y = (int)(492 * (1 - minMaxValue.get("yScale")) / 2 + 10 + 492 * (point.getY() - minMaxValue.get("minY")) / minMaxValue.get("scale"));
+            int z = (int) (10 + 200 * (point.getZ() - minMaxValue.get("minZ")) / (minMaxValue.get("maxZ") - minMaxValue.get("minZ")));
+            switch (index) {
+                case 0: {
+                    lineInScreen.setBegin(new Point(x, y, z));
+                    index++;
+                    break;
+                }
+                case 1: {
+                    lineInScreen.setEnd(new Point(x, y, z));
+                    index++;
+                    break;
+                }
+                default:
+                    break;
+            }
+        }
+
+        Point beginInScreen = lineInScreen.getBegin();
+        Point endInScreen = lineInScreen.getEnd();
+
+        if (lineInScreen.getBegin().getX() > lineInScreen.getEnd().getX()){
+            beginInScreen = lineInScreen.getEnd();
+            endInScreen = lineInScreen.getBegin();
+        }else {
+            beginInScreen = lineInScreen.getBegin();
+            endInScreen = lineInScreen.getEnd();
+        }
+
+        double k = (endInScreen.getY() - beginInScreen.getY())/(endInScreen.getX() - beginInScreen.getX());
+        if (Math.abs(k) <= 1){
+            int xBegin = (int)beginInScreen.getX();
+            int yBegin = (int)beginInScreen.getY();
+            double Ratio = k;
+            for (int i = (int)beginInScreen.getX(); i <= (int)endInScreen.getX(); i++){
+                int xSteps = i - xBegin;
+                int yValue = yBegin + (int)Math.round(xSteps * Ratio);
+                pictureData[i][yValue] = 0;
+            }
+        }else{
+            if (lineInScreen.getBegin().getY() > lineInScreen.getEnd().getY()){
+                beginInScreen = lineInScreen.getEnd();
+                endInScreen = lineInScreen.getBegin();
+            }else{
+                beginInScreen = lineInScreen.getBegin();
+                endInScreen = lineInScreen.getEnd();
+            }
+
+            int xBegin = (int)beginInScreen.getX();
+            int yBegin = (int)beginInScreen.getY();
+            double Ratio = (endInScreen.getX() - beginInScreen.getX())/(endInScreen.getY() - beginInScreen.getY());
+            for (int i = (int)beginInScreen.getY(); i <= (int)endInScreen.getY(); i++){
+                int ySteps = i - yBegin;
+                int xValue = xBegin + (int)Math.round(ySteps * Ratio);
+                pictureData[xValue][i] = 0;
+            }
+        }
+    }
+
+    /**
+     * 将消隐后的线，加到或者独立加到图片数据矩阵中，利用z-buffer
+     */
+    private void printToPicture(Line line, int[][] pictureData, Map<String,Double> minMaxValue ,int[][] newPictureData) {
+        if (null == newPictureData)
+            newPictureData = pictureData;
+
+        Line lineInScreen = new Line();
+        int index = 0;
+        for (Point point : new Point[]{line.getBegin(), line.getEnd()}) {
+            double x = (int)(492 * (1 - minMaxValue.get("xScale")) / 2 + 10 + 492 * (point.getX() - minMaxValue.get("minX")) / minMaxValue.get("scale"));
+            double y = (int)(492 * (1 - minMaxValue.get("yScale")) / 2 + 10 + 492 * (point.getY() - minMaxValue.get("minY")) / minMaxValue.get("scale"));
+            int z = (int) (10 + 200 * (point.getZ() - minMaxValue.get("minZ")) / (minMaxValue.get("maxZ") - minMaxValue.get("minZ")));
             switch (index) {
                 case 0: {
                     lineInScreen.setBegin(new Point(x, y, z));
@@ -292,7 +772,7 @@ public class Model {
                 int yValue = yBegin + (int)Math.round(xSteps * Ratio);
                 int zValue = zBegin + (int)Math.round(xSteps * zRatio);
                 if(zValue <= pictureData[i][yValue] + 5){
-                    pictureData[i][yValue] = 0;
+                    newPictureData[i][yValue] = 255;
                 }
             }
         }else{
@@ -314,65 +794,16 @@ public class Model {
                 int xValue = xBegin + (int)Math.round(ySteps * Ratio);
                 int zValue = zBegin + (int)Math.round(ySteps * zRatio);
                 if(zValue <= pictureData[xValue][i] + 5){
-                    pictureData[xValue][i] = 0;
+                    newPictureData[xValue][i] = 255;
                 }
             }
         }
 
-
-
-
-
-
-
-
-
-
-//        if (lineInScreen.getBegin().getX() > lineInScreen.getEnd().getX()){
-//            Point temp = lineInScreen.getBegin();
-//            lineInScreen.setBegin(lineInScreen.getEnd());
-//            lineInScreen.setEnd(temp);
-//        }
-//
-//        int xBegin = (int)lineInScreen.getBegin().getX();
-//        int yBegin = (int)lineInScreen.getBegin().getY();
-//        int zBegin = (int)lineInScreen.getBegin().getZ();
-//        double Ratio = (lineInScreen.getEnd().getY() - lineInScreen.getBegin().getY())/(lineInScreen.getEnd().getX() - lineInScreen.getBegin().getX());
-//        double zRatio = (lineInScreen.getEnd().getZ() - lineInScreen.getBegin().getZ())/(lineInScreen.getEnd().getX() - lineInScreen.getBegin().getX());
-//
-//        for (int i = (int)lineInScreen.getBegin().getX(); i <= (int)lineInScreen.getEnd().getX(); i++){
-//            int xSteps = i - xBegin;
-//            int yValue = yBegin + (int)Math.round(xSteps * Ratio);
-//            int zValue = zBegin + (int)Math.round(xSteps * zRatio);
-//            if(zValue <= pictureData[i][yValue] + 5){
-//                pictureData[i][yValue] = 0;
-//            }
-//        }
-//
-//        if (lineInScreen.getBegin().getY() > lineInScreen.getEnd().getY()){
-//            Point temp = lineInScreen.getBegin();
-//            lineInScreen.setBegin(lineInScreen.getEnd());
-//            lineInScreen.setEnd(temp);
-//        }
-//
-//        xBegin = (int)lineInScreen.getBegin().getX();
-//        yBegin = (int)lineInScreen.getBegin().getY();
-//        zBegin = (int)lineInScreen.getBegin().getZ();
-//        Ratio = (lineInScreen.getEnd().getY() - lineInScreen.getBegin().getY())/(lineInScreen.getEnd().getX() - lineInScreen.getBegin().getX());
-//        zRatio = (lineInScreen.getEnd().getZ() - lineInScreen.getBegin().getZ())/(lineInScreen.getEnd().getY() - lineInScreen.getBegin().getY());
-//
-//
-//        for (int i = (int)lineInScreen.getBegin().getY(); i <= (int)lineInScreen.getEnd().getY(); i++){
-//            int ySteps = i - yBegin;
-//            int xValue = xBegin + (int)Math.round(ySteps * Ratio);
-//            int zValue = zBegin + (int)Math.round(ySteps * zRatio);
-//            if(zValue <= pictureData[xValue][i] + 5){
-//                pictureData[xValue][i] = 0;
-//            }
-//        }
-
     }
 
+    /**
+     * 典型的图形学的问题，判断像素的坐标是否在三角形的内部
+     */
     private boolean isPointInTriangle(Point point, Triangle triangle){
         Point A = triangle.getA();
         Point B = triangle.getB();
@@ -392,6 +823,9 @@ public class Model {
         return ans;
     }
 
+    /**
+     * 通过三角形三个点的不同的z值，来按比例判断三角形中某个点的z值
+     */
     private int getZValue(Point point, Triangle triangle){
         Point A = triangle.getA();
         Point B = triangle.getB();
@@ -407,6 +841,9 @@ public class Model {
         }
     }
 
+    /**
+     * 初始化该数据结构
+     */
     private void initialMinMaxValue(Map<String,Double> minMaxValue){
         minMaxValue.put("minX",Double.MAX_VALUE);
         minMaxValue.put("minY",Double.MAX_VALUE);
@@ -416,6 +853,9 @@ public class Model {
         minMaxValue.put("maxZ",Double.MIN_VALUE);
     }
 
+    /**
+     * 更新数据结构的数据，保持其有效性
+     */
     private void updateMinMaxValue(String item, double value, Map<String,Double> minMaxValue){
         String min = null, max = null;
         if ("x".equals(item)) {
@@ -437,6 +877,9 @@ public class Model {
         minMaxValue.put(max, tempMaxValue > value ? tempMaxValue : value);
     }
 
+    /**
+     * 归一化模型数据，获得模型的中点，并移动到坐标系的原点，根据比例将最长的轴缩放到1，其余的按比例缩放
+     */
     private void unify(){
         double midX = minMaxValue.get("midX");
         double midY = minMaxValue.get("midY");
