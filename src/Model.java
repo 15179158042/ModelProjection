@@ -161,6 +161,7 @@ public class Model {
         List<Triangle> unSplitTriangleList = new ArrayList<>();
         List<Line> afterSplitLineList = new ArrayList<>();
         List<Line> unSplitLineList = new ArrayList<>();
+        List<Line> extraLines = new ArrayList<>();
         for (Triangle triangle : triangleList) {
             int negativeCount = 0;
             switch (type) {
@@ -195,9 +196,10 @@ public class Model {
                     break;
                 }
                 case 1:
-                    ;
+                    splitIntoTwoOrMorePart(triangle, afterSplitTriangleList, unSplitTriangleList, extraLines, type);
+                    break;
                 case 2: {
-                    splitIntoTwoOrMorePart(triangle, afterSplitTriangleList, unSplitTriangleList, type);
+                    splitIntoTwoOrMorePart(triangle, afterSplitTriangleList, unSplitTriangleList, extraLines, type);
                     break;
                 }
                 case 3: {
@@ -240,7 +242,7 @@ public class Model {
                     break;
                 }
                 case 1:
-                    splitIntoTwoPart(line,afterSplitLineList,unSplitLineList,type);
+                    splitIntoTwoPart(line, afterSplitLineList, unSplitLineList, type);
                     break;
                 case 2: {
                     afterSplitLineList.add(line);
@@ -248,16 +250,82 @@ public class Model {
                 }
             }
         }
+
+        Map<Point,List<Line>> pointMap = new HashMap<>();
+        for (int index = 0; index < extraLines.size(); index++){
+            Line tempLine = extraLines.get(index);
+            for (Point tempPoint : new Point[]{tempLine.getBegin(), tempLine.getEnd()}) {
+                List<Line> lineList = pointMap.getOrDefault(tempPoint, new ArrayList<>());
+                lineList.add(tempLine);
+                pointMap.put(tempPoint, lineList);
+            }
+        }
+
+        while(!extraLines.isEmpty()){
+            List<Line> oneCircleLines = new ArrayList<>();
+            Line firstLine = extraLines.get(0);
+            extraLines.remove(firstLine);
+            Line tempLine = firstLine;
+            Set<Point> haveVisitedPoint = new HashSet<>();
+            while (true) {
+                Point node = tempLine.getEnd();
+                if (haveVisitedPoint.contains(node))
+                    node = tempLine.getBegin();
+                haveVisitedPoint.add(node);
+                List<Line> nextLineList = pointMap.get(node);
+                Line nextLine = null;
+                for (Line line : nextLineList) {
+                    if (!line.equals(tempLine))
+                        nextLine = line;
+                }
+                if (nextLine.equals(firstLine))
+                    break;
+
+                oneCircleLines.add(tempLine);
+                tempLine = nextLine;
+                extraLines.remove(nextLine);
+            }
+            Line lastLine = oneCircleLines.get(0);
+            for (int index = 1;index < oneCircleLines.size() - 2;index++){
+                Map<Point,Integer> pointCountMap = new HashMap<>();
+                Point A = lastLine.getBegin();
+                Point B = lastLine.getEnd();
+                Point C = oneCircleLines.get(index).getEnd();
+                Point D = oneCircleLines.get(index).getBegin();
+                for (Point point : new Point[]{A,B,C,D})
+                    pointCountMap.put(point,pointCountMap.getOrDefault(point,0)+1);
+                Point begin = null;
+                Point mid = null;
+                Point end = null;
+                if (pointCountMap.get(A) == 1) {
+                    begin = A;
+                    mid = B;
+                }else{
+                    begin = B;
+                    mid = A;
+                }
+                if (pointCountMap.get(C) == 1)
+                    end = C;
+                else
+                    end = D;
+
+                Triangle triangle = new Triangle(begin,mid,end,null);
+                afterSplitTriangleList.add(triangle);
+                unSplitTriangleList.add(triangle);
+                lastLine = new Line(begin,end);
+            }
+        }
         afterSplitModel.setTriangleList(afterSplitTriangleList);
         afterSplitModel.setLineList(afterSplitLineList);
         return afterSplitModel;
     }
 
-    private void splitIntoTwoOrMorePart(Triangle triangle, List<Triangle> afterSplitTriangleList, List<Triangle> unSplitTriangleList,int type){
+    private void splitIntoTwoOrMorePart(Triangle triangle, List<Triangle> afterSplitTriangleList, List<Triangle> unSplitTriangleList,List<Line> extraLines,int type){
         Point A = triangle.getA();
         Point B = triangle.getB();
         Point C = triangle.getC();
         List<Point> pointList = new ArrayList<>();
+        List<Point> newPointList = new ArrayList<>();
         pointList.add(A);
         pointList.add(B);
         pointList.add(C);
@@ -278,7 +346,9 @@ public class Model {
                         Point newPoint = new Point(begin.getX() + xRation * (0 - begin.getZ())
                                         ,begin.getY() + yRation * (0 - begin.getZ())
                                         ,0);
-                        pointList.add(newPoint);
+                        newPointList.add(begin);
+                        newPointList.add(newPoint);
+                        newPointList.add(end);
                         pointCount.put(begin,pointCount.getOrDefault(begin,0)+1);
                         pointCount.put(end,pointCount.getOrDefault(end,0)+1);
                     }
@@ -299,7 +369,9 @@ public class Model {
                         Point newPoint = new Point(begin.getX() + xRation * (0 - begin.getY())
                                 ,0
                                 ,begin.getZ() + zRation * (0 - begin.getY()));
-                        pointList.add(newPoint);
+                        newPointList.add(begin);
+                        newPointList.add(newPoint);
+                        newPointList.add(end);
                         pointCount.put(begin,pointCount.getOrDefault(begin,0)+1);
                         pointCount.put(end,pointCount.getOrDefault(end,0)+1);
                     }
@@ -320,7 +392,9 @@ public class Model {
                         Point newPoint = new Point(0
                                 ,begin.getY() + yRation * (0 - begin.getX())
                                 ,begin.getZ() + zRation * (0 - begin.getX()));
-                        pointList.add(newPoint);
+                        newPointList.add(begin);
+                        newPointList.add(newPoint);
+                        newPointList.add(end);
                         pointCount.put(begin,pointCount.getOrDefault(begin,0)+1);
                         pointCount.put(end,pointCount.getOrDefault(end,0)+1);
                     }
@@ -328,14 +402,41 @@ public class Model {
                 break;
             }
         }
-        if (pointList.size() == 3) {
+        if (newPointList.size() == 0) {
             afterSplitTriangleList.add(triangle);
-        }else if (pointList.size() == 4){
-            for (Point point : new Point[]{A,B,C}){
-                if (pointCount.get(point) == 0){
-                    for (Point point1 : new Point[]{A,B,C}){
+            List<Point> zeroPoints = new ArrayList<>();
+            switch (type){
+                case 0:{
+                    for (Point point : pointList){
+                        if (point.getZ() == 0)
+                            zeroPoints.add(point);
+                    }
+                    break;
+                }
+                case 1:{
+                    for (Point point : pointList){
+                        if (point.getY() == 0)
+                            zeroPoints.add(point);
+                    }
+                    break;
+                }
+                case 2:{
+                    for (Point point : pointList){
+                        if (point.getX() == 0)
+                            zeroPoints.add(point);
+                    }
+                    break;
+                }
+            }
+            if (zeroPoints.size() == 2){
+                extraLines.add(new Line(zeroPoints.get(0),zeroPoints.get(1)));
+            }
+        }else if (newPointList.size() == 3){
+            for (Point point : pointList){
+                if (pointCount.getOrDefault(point,0) == 0){
+                    for (Point point1 : pointList){
                         if (point != point1){
-                           Triangle newTriangle = new Triangle(point, point1,pointList.get(3),null);
+                           Triangle newTriangle = new Triangle(point, point1, newPointList.get(1),null);
                            switch (type){
                                case 0:{
                                    if (point1.getZ() < 0){
@@ -366,10 +467,38 @@ public class Model {
                     }
                 }
             }
+            List<Point> zeroPoints = new ArrayList<>();
+            switch (type){
+                case 0:{
+                    for (Point point : pointList){
+                        if (point.getZ() == 0)
+                            zeroPoints.add(point);
+                    }
+                    break;
+                }
+                case 1:{
+                    for (Point point : pointList){
+                        if (point.getY() == 0)
+                            zeroPoints.add(point);
+                    }
+                    break;
+                }
+                case 2:{
+                    for (Point point : pointList){
+                        if (point.getX() == 0)
+                            zeroPoints.add(point);
+                    }
+                    break;
+                }
+            }
+            if (zeroPoints.size() == 1){
+                extraLines.add(new Line(zeroPoints.get(0), newPointList.get(1)));
+            }
         }else {
-            for (Point point : new Point[]{A,B,C}){
+            int flag = 0;
+            for (Point point : pointList){
                 if (pointCount.get(point) == 2){
-                    Triangle newTriangle = new Triangle(point,pointList.get(3),pointList.get(4),null);
+                    Triangle newTriangle = new Triangle(point,newPointList.get(1),newPointList.get(4),null);
                     switch (type) {
                         case 0: {
                             if (point.getZ() < 0) {
@@ -396,58 +525,118 @@ public class Model {
                             break;
                         }
                     }
-                }else{
-                    for (Point point1 : new Point[]{A,B,C}){
-                        if (point != point1 && pointCount.get(point1) == 1){
-                            Triangle newTriangle = new Triangle(point, point1,pointList.get(3),null);
-                            switch (type) {
-                                case 0: {
-                                    if (point.getZ() < 0) {
-                                        afterSplitTriangleList.add(newTriangle);
-                                    } else {
-                                        unSplitTriangleList.add(newTriangle);
-                                    }
-                                    break;
-                                }
-                                case 1: {
-                                    if (point.getY() < 0) {
-                                        afterSplitTriangleList.add(newTriangle);
-                                    } else {
-                                        unSplitTriangleList.add(newTriangle);
-                                    }
-                                    break;
-                                }
-                                case 2: {
-                                    if (point.getX() < 0) {
-                                        afterSplitTriangleList.add(newTriangle);
-                                    } else {
-                                        unSplitTriangleList.add(newTriangle);
-                                    }
-                                    break;
-                                }
+                }else {
+                    Triangle newTriangle = null;
+                    if (flag == 0) {
+                        for (Point point1 : pointList){
+                            if (pointCount.get(point1) == 1 && point != point1){
+                                newTriangle = new Triangle(point, point1, newPointList.get(1), null);
                             }
+                        }
+                        flag++;
+                    } else {
+                        for (Point point1 : new Point[]{newPointList.get(3),newPointList.get(5)}){
+                            if (pointCount.get(point1) == 1){
+                                newTriangle = new Triangle(point1, newPointList.get(1),newPointList.get(4), null);
+                            }
+                        }
+                    }
+                    switch (type) {
+                        case 0: {
+                            if (point.getZ() < 0) {
+                                afterSplitTriangleList.add(newTriangle);
+                            } else {
+                                unSplitTriangleList.add(newTriangle);
+                            }
+                            break;
+                        }
+                        case 1: {
+                            if (point.getY() < 0) {
+                                afterSplitTriangleList.add(newTriangle);
+                            } else {
+                                unSplitTriangleList.add(newTriangle);
+                            }
+                            break;
+                        }
+                        case 2: {
+                            if (point.getX() < 0) {
+                                afterSplitTriangleList.add(newTriangle);
+                            } else {
+                                unSplitTriangleList.add(newTriangle);
+                            }
+                            break;
                         }
                     }
                 }
             }
+            extraLines.add(new Line(newPointList.get(1), newPointList.get(4)));
         }
     }
 
     private void splitIntoTwoPart(Line line,List<Line> afterSplitLineList,List<Line> unSplitLineList,int type){
         Point begin = line.getBegin();
         Point end = line.getEnd();
+        Point midPoint = null;
         switch (type){
             case 0:{
                 if (begin.getZ()==0 || end.getZ()==0)
                     afterSplitLineList.add(line);
                 else{
                     double xRatio = (end.getX() - begin.getX()) / (end.getZ() - begin.getZ());
-                    double yRation = (end.getY() - begin.getY()) / (end.getZ() - begin.getZ());
-
+                    double yRatio = (end.getY() - begin.getY()) / (end.getZ() - begin.getZ());
+                    midPoint = new Point(begin.getX() + xRatio * (0 - begin.getZ()), begin.getY() + yRatio * (0 - begin.getZ()), 0);
                 }
-
-
                 break;
+            }
+            case 1:{
+                if (begin.getY()==0 || end.getY()==0)
+                    afterSplitLineList.add(line);
+                else{
+                    double xRatio = (end.getX() - begin.getX()) / (end.getY() - begin.getY());
+                    double zRatio = (end.getZ() - begin.getZ()) / (end.getY() - begin.getY());
+                    midPoint = new Point(begin.getX() + xRatio * (0 - begin.getY()),0 , begin.getZ() + zRatio * (0 - begin.getY()));
+                }
+                break;
+            }
+            case 2:{
+                if (begin.getX()==0 || end.getX()==0)
+                    afterSplitLineList.add(line);
+                else{
+                    double yRatio = (end.getY() - begin.getY()) / (end.getX() - begin.getX());
+                    double zRatio = (end.getZ() - begin.getZ()) / (end.getX() - begin.getX());
+                    midPoint = new Point(0, begin.getY() + yRatio * (0 - begin.getX()) , begin.getZ() + zRatio * (0 - begin.getX()));
+                }
+                break;
+            }
+        }
+        if (null == midPoint)
+            return;
+        else {
+            for (Point point : new Point[]{begin, end}){
+                Line tempLine = new Line(point, midPoint);
+                switch (type){
+                    case 0:{
+                        if (point.getZ() < 0)
+                            afterSplitLineList.add(tempLine);
+                        else
+                            unSplitLineList.add(tempLine);
+                        break;
+                    }
+                    case 1:{
+                        if (point.getY() < 0)
+                            afterSplitLineList.add(tempLine);
+                        else
+                            unSplitLineList.add(tempLine);
+                        break;
+                    }
+                    case 2:{
+                        if (point.getX() < 0)
+                            afterSplitLineList.add(tempLine);
+                        else
+                            unSplitLineList.add(tempLine);
+                        break;
+                    }
+                }
             }
         }
 
@@ -458,7 +647,7 @@ public class Model {
      */
     public void getOnePicture(int index){
         Matrix matrix = matrixList.get(index);
-        int[][] pictureData = getAllLinePictureData(matrix);
+        int[][] pictureData = getPictureWithFrameData(matrix);
         int[] data = new int[512 * 512];
         int index2 = 0;
         for (int i = 0; i < 512; i++) {

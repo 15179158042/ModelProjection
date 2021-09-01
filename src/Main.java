@@ -13,8 +13,8 @@ public class Main {
         try {
             Model model = new Model(
                     "D:\\Desktop\\文件\\任务\\毕业设计\\3D\\ESB零件库\\Rectangular-Cubic-Prism\\Rectangular-Cubic Prism\\Bearing Blocks\\advgr01.STL");
-            model.getOnePicture(1);
-
+            Model newModel = model.Split(2);
+            newModel.getPicture("D:\\Desktop\\1");
 
 
 
