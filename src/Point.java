@@ -11,9 +11,9 @@ public class Point {
 
     public Point(){}
     public Point(double x,double y,double z){
-        this.x = x;
-        this.y = y;
-        this.z = z;
+        this.x = Util.remainPoint4(x);
+        this.y = Util.remainPoint4(y);
+        this.z = Util.remainPoint4(z);
     }
 
     public Point(Point another){

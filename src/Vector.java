@@ -15,6 +15,12 @@ public class Vector {
         this.y = y;
         this.z = z;
     }
+    public Vector(Point begin, Point end){
+        this.x = end.getX() - begin.getX();
+        this.y = end.getY() - begin.getY();
+        this.z = end.getZ() - begin.getZ();
+    }
+
 
     public Vector(Vector another){
         this.x = another.getX();

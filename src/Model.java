@@ -250,10 +250,10 @@ public class Model {
                 }
             }
         }
-
         Map<Point,List<Line>> pointMap = new HashMap<>();
         for (int index = 0; index < extraLines.size(); index++){
             Line tempLine = extraLines.get(index);
+            afterSplitLineList.add(tempLine);
             for (Point tempPoint : new Point[]{tempLine.getBegin(), tempLine.getEnd()}) {
                 List<Line> lineList = pointMap.getOrDefault(tempPoint, new ArrayList<>());
                 lineList.add(tempLine);
@@ -280,13 +280,17 @@ public class Model {
                 }
                 if (nextLine.equals(firstLine))
                     break;
-
                 oneCircleLines.add(tempLine);
                 tempLine = nextLine;
                 extraLines.remove(nextLine);
             }
+            for (Line line : oneCircleLines)
+                System.out.println(line);
+            System.out.println("-----");
+            System.out.println(oneCircleLines.size());
+
             Line lastLine = oneCircleLines.get(0);
-            for (int index = 1;index < oneCircleLines.size() - 2;index++){
+            for (int index = 1;index < oneCircleLines.size() - 1;index++){
                 Map<Point,Integer> pointCountMap = new HashMap<>();
                 Point A = lastLine.getBegin();
                 Point B = lastLine.getEnd();
@@ -310,9 +314,35 @@ public class Model {
                     end = D;
 
                 Triangle triangle = new Triangle(begin,mid,end,null);
-                afterSplitTriangleList.add(triangle);
-                unSplitTriangleList.add(triangle);
-                lastLine = new Line(begin,end);
+                Vector midBegin = new Vector(mid,begin);
+                Vector midEnd = new Vector(mid,end);
+                Vector crossResult = midBegin.cross(midEnd);
+                boolean satisfy = false;
+                switch (type){
+                    case 0:{
+                        if (crossResult.getZ() > 0)
+                            satisfy = true;
+                        break;
+                    }
+                    case 1:{
+                        if (crossResult.getY() > 0)
+                            satisfy = true;
+                        break;
+                    }
+                    case 2:{
+                        if (crossResult.getX() > 0)
+                            satisfy = true;
+                        break;
+                    }
+                }
+                if (satisfy) {
+                    afterSplitTriangleList.add(triangle);
+                    unSplitTriangleList.add(triangle);
+                    lastLine = new Line(begin,end);
+                }else {
+                    lastLine =  oneCircleLines.get(index + 1);
+                    index++;
+                }
             }
         }
         afterSplitModel.setTriangleList(afterSplitTriangleList);
