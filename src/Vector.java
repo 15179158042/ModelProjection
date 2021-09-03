@@ -1,4 +1,5 @@
 import java.util.List;
+import java.util.Objects;
 
 /**
  * @author Liuhaifeng
@@ -16,9 +17,9 @@ public class Vector {
         this.z = z;
     }
     public Vector(Point begin, Point end){
-        this.x = end.getX() - begin.getX();
-        this.y = end.getY() - begin.getY();
-        this.z = end.getZ() - begin.getZ();
+        this.x = Util.remainPoint4(end.getX() - begin.getX());
+        this.y = Util.remainPoint4(end.getY() - begin.getY());
+        this.z = Util.remainPoint4(end.getZ() - begin.getZ());
     }
 
 
@@ -26,6 +27,12 @@ public class Vector {
         this.x = another.getX();
         this.y = another.getY();
         this.z = another.getZ();
+    }
+
+    public Vector(Line line){
+        this.x = Util.remainPoint4(line.getEnd().getX() - line.getBegin().getX());
+        this.y = Util.remainPoint4(line.getEnd().getY() - line.getBegin().getY());
+        this.z = Util.remainPoint4(line.getEnd().getZ() - line.getBegin().getZ());
     }
 
     public Vector cross(Vector another){
@@ -42,9 +49,12 @@ public class Vector {
     }
 
     public void reverse(){
-        this.x = -1 * this.x;
-        this.y = -1 * this.y;
-        this.z = -1 * this.z;
+        if (this.x != 0)
+            this.x = -1 * this.x;
+        if(this.y != 0)
+            this.y = -1 * this.y;
+        if(this.z != 0)
+            this.z = -1 * this.z;
     }
 
     public void unify(){
@@ -98,5 +108,18 @@ public class Vector {
                 ", y=" + y +
                 ", z=" + z +
                 '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Vector vector = (Vector) o;
+        return Double.compare(vector.x, x) == 0 && Double.compare(vector.y, y) == 0 && Double.compare(vector.z, z) == 0;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(x, y, z);
     }
 }

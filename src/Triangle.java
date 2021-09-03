@@ -1,5 +1,7 @@
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * @author Liuhaifeng
@@ -17,6 +19,35 @@ public class Triangle {
     private List<Triangle> neighborTriangles = new ArrayList<>();
 
     public Triangle(){}
+
+    //两条相连的线的三角形
+    public Triangle(Line line1,Line line2){
+        Map<Point,Integer> pointCountMap = new HashMap<>();
+        Point A = line1.getBegin();
+        Point B = line1.getEnd();
+        Point C = line2.getEnd();
+        Point D = line2.getBegin();
+        for (Point point : new Point[]{A,B,C,D})
+            pointCountMap.put(point,pointCountMap.getOrDefault(point,0)+1);
+        Point begin = null;
+        Point mid = null;
+        Point end = null;
+        if (pointCountMap.get(A) == 1) {
+            begin = A;
+            mid = B;
+        }else{
+            begin = B;
+            mid = A;
+        }
+        if (pointCountMap.get(C) == 1)
+            end = C;
+        else
+            end = D;
+        this.a = begin;
+        this.b = mid;
+        this.c = end;
+        this.n = null;
+    }
 
     public Triangle(Triangle another){
         if (null != another.getA())
