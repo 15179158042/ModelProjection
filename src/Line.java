@@ -84,20 +84,21 @@ public class Line {
             double eta = q/d;
             if (!(0 <= lam && lam<=1 && 0 <= eta && eta <= 1 ))
                 return false;
+            else
+                return true;
         }
         if (p != 0 || q != 0)
             return false;
         double t1 = Double.min(Double.max(y1,y2),Double.max(y3,y4));
         double t2 = Double.max(Double.min(y1,y2),Double.min(y3,y4));
-        if (t1 < t2)
-            return false;
-        return true;
+        if (t1 >= t2)
+            return true;
+        return false;
     }
     // 叉积运算
     private double cross(double ux, double uy, double vx, double vy) {
         return ux * vy - vx * uy;
     }
-
 
     public Point getBegin() {
         return begin;

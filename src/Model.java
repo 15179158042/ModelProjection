@@ -260,7 +260,6 @@ public class Model {
                 pointMap.put(tempPoint, lineList);
             }
         }
-
         while(!extraLines.isEmpty()){
             List<Line> oneCircleLines = new ArrayList<>();
             Line firstLine = extraLines.get(0);
@@ -286,7 +285,6 @@ public class Model {
                 tempLine = nextLine;
                 extraLines.remove(nextLine);
             }
-
             List<Line> oneCircleMergedLines = new ArrayList<>();
             List<Point> oneCircleMergedPoints = new ArrayList<>();
             Line lastLine = oneCircleLines.get(0);
@@ -314,7 +312,7 @@ public class Model {
                 else
                     end = D;
 
-                if (lastLine.isParallel(thisLine) || lastLine.getLength()/ thisLine.getLength() < 0.01 || lastLine.getLength()/ thisLine.getLength() > 100 ){
+                if (lastLine.isParallel(thisLine) || lastLine.getLength()/ thisLine.getLength() < 0.001 || lastLine.getLength()/ thisLine.getLength() > 1000 ){
                     lastLine = new Line(begin,end);
                 }else{
                     oneCircleMergedLines.add(lastLine);
@@ -326,19 +324,7 @@ public class Model {
                     oneCircleMergedPoints.add(lastLine.getBegin());
                 }
             }
-//            System.out.println(oneCircleMergedLines.size());
-//            for (Line line : oneCircleMergedLines)
-//                System.out.println(line);
-//
-//            System.out.println(oneCircleMergedPoints.size());
-
             List<Triangle> newTriangleList = splitIntoTriangles(oneCircleMergedLines,oneCircleMergedPoints,type);
-
-            System.out.println(newTriangleList.size());
-            System.out.println("+++");
-
-
-
             afterSplitTriangleList.addAll(newTriangleList);
         }
         afterSplitModel.setTriangleList(afterSplitTriangleList);
@@ -348,9 +334,6 @@ public class Model {
 
     List<Triangle> splitIntoTriangles(List<Line> tempLineList,List<Point> pointList,int type){
         List<Triangle> triangleList = new ArrayList<>();
-        for (Point point : pointList)
-            System.out.println(point);
-        System.out.println(tempLineList.size());
         if (tempLineList.size() < 3)
             return triangleList;
         if (tempLineList.size() == 3){
@@ -375,14 +358,8 @@ public class Model {
                     int lastJ = (j == 0 ? tempLineList.size()-1 : j-1);
                     if(!(k == i || k == lastI || k == j || k == lastJ)) {
                         Line exitLine = tempLineList.get(k);
-                        if (newLine.isCross(exitLine, type)) {
+                        if (newLine.isCross(exitLine, type))
                             break;
-                        }else{
-                            System.out.println(exitLine);
-                            System.out.println(newLine);
-                            System.out.println("=====");
-
-                        }
                     }
                     if (k == tempLineList.size() - 1)
                         success = true;
@@ -432,25 +409,18 @@ public class Model {
 
         if (pointIndexOfNewLine.size() < 2)
             return triangleList;
-
         int begin = pointIndexOfNewLine.get(0) > pointIndexOfNewLine.get(1) ? pointIndexOfNewLine.get(1) :pointIndexOfNewLine.get(0);
         int end = pointIndexOfNewLine.get(0) > pointIndexOfNewLine.get(1) ? pointIndexOfNewLine.get(0) :pointIndexOfNewLine.get(1);
-
-        System.out.println("begin"+begin);
-        System.out.println("end"+end);
-
         List<Line> leftLineList = new ArrayList<>();
         List<Line> rightLineList = new ArrayList<>();
         List<Point> leftPointList = new ArrayList<>();
         List<Point> rightPointList = new ArrayList<>();
-
         for (int i = begin;i<end;i++) {
             leftLineList.add(tempLineList.get(i));
             leftPointList.add(pointList.get(i));
         }
         leftPointList.add(pointList.get(end));
         leftLineList.add(new Line(pointList.get(end),pointList.get(begin)));
-
         int count = 0;
         for (int i = end;count < pointList.size() - (end - begin) ;count++,i++){
             if (i == tempLineList.size())
@@ -460,14 +430,10 @@ public class Model {
         }
         rightPointList.add(pointList.get(begin));
         rightLineList.add(new Line(pointList.get(begin),pointList.get(end)));
-
         triangleList.addAll(splitIntoTriangles(leftLineList,leftPointList,type));
-
         triangleList.addAll(splitIntoTriangles(rightLineList,rightPointList,type));
         return triangleList;
     }
-
-
 
     private void splitIntoTwoOrMorePart(Triangle triangle, List<Triangle> afterSplitTriangleList, List<Triangle> unSplitTriangleList,List<Line> extraLines,int type){
         Point A = triangle.getA();
