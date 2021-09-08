@@ -67,6 +67,19 @@ public class Triangle {
         this.n = n;
     }
 
+    //海伦公式求面积
+    public double getArea(){
+        Line ab = new Line(a,b);
+        Line bc = new Line(b,c);
+        Line ca = new Line(c,a);
+        double abLength = ab.getLength();
+        double bcLength = bc.getLength();
+        double caLength = ca.getLength();
+        double tmp = (abLength + bcLength + caLength)/2;
+        double ans = Math.sqrt(tmp * (tmp - abLength) * (tmp - bcLength) * (tmp - caLength));
+        return Util.remainPoint4(ans);
+    }
+
     public Point getA() {
         return a;
     }

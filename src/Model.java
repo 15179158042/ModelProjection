@@ -155,8 +155,10 @@ public class Model {
      * 1 -- x-z平面剖 y = 0；
      * 2 -- y-z平面剖 x = 0；
      */
-    public Model Split(int type){
+    private List<Model> split(int type){
+        List<Model> ans = new ArrayList<>();
         Model afterSplitModel = new Model();
+        Model unSplitModel = new Model();
         List<Triangle> afterSplitTriangleList = new ArrayList<>();
         List<Triangle> unSplitTriangleList = new ArrayList<>();
         List<Line> afterSplitLineList = new ArrayList<>();
@@ -254,6 +256,7 @@ public class Model {
         for (int index = 0; index < extraLines.size(); index++){
             Line tempLine = extraLines.get(index);
             afterSplitLineList.add(tempLine);
+            unSplitLineList.add(tempLine);
             for (Point tempPoint : new Point[]{tempLine.getBegin(), tempLine.getEnd()}) {
                 List<Line> lineList = pointMap.getOrDefault(tempPoint, new ArrayList<>());
                 lineList.add(tempLine);
@@ -326,10 +329,15 @@ public class Model {
             }
             List<Triangle> newTriangleList = splitIntoTriangles(oneCircleMergedLines,oneCircleMergedPoints,type);
             afterSplitTriangleList.addAll(newTriangleList);
+            unSplitTriangleList.addAll(newTriangleList);
         }
         afterSplitModel.setTriangleList(afterSplitTriangleList);
         afterSplitModel.setLineList(afterSplitLineList);
-        return afterSplitModel;
+        unSplitModel.setTriangleList(unSplitTriangleList);
+        unSplitModel.setLineList(unSplitLineList);
+        ans.add(afterSplitModel);
+        ans.add(unSplitModel);
+        return ans;
     }
 
     List<Triangle> splitIntoTriangles(List<Line> tempLineList,List<Point> pointList,int type){
@@ -760,7 +768,7 @@ public class Model {
     /**
      * 获得某个投影角度的图片，并展示在桌面上
      */
-    public void getOnePicture(int index){
+    public void getOnePicture(int index,String pictureName){
         Matrix matrix = matrixList.get(index);
         int[][] pictureData = getPictureWithFrameData(matrix);
         int[] data = new int[512 * 512];
@@ -772,13 +780,20 @@ public class Model {
         }
         Mat picture = new Mat(512, 512, CvType.CV_32S);
         picture.put(0, 0, data);
-        Imgcodecs.imwrite("D:\\Desktop\\1222.jpg", picture);
+        Imgcodecs.imwrite("D:\\Desktop\\"+pictureName+".jpg", picture);
+    }
+
+    public double getAllAreaOfTriangles(){
+        double ans = 0;
+        for (Triangle triangle : triangleList)
+            ans += triangle.getArea();
+        return ans;
     }
 
     /**
      * 获得所有的角度的图片
      */
-    public void getPicture(String filePath){
+    public void getPictures(String filePath){
         for (int index =0 ; index < 62; index++) {
             Matrix matrix = matrixList.get(index);
             int[][] pictureData = getPictureWithFrameData(matrix);
@@ -794,6 +809,34 @@ public class Model {
             String path = filePath + "\\" + index + ".jpg";
             System.out.println("生成第"+index+"张图片");
             Imgcodecs.imwrite(path, picture);
+        }
+    }
+
+    public void getSplitPicture(){
+        int count = 0;
+        for (int type = 0; type < 3; type++) {
+            List<Model> newModels = this.split(type);
+            double leftArea = newModels.get(0).getAllAreaOfTriangles();
+            double rightArea = newModels.get(1).getAllAreaOfTriangles();
+            double ratio = leftArea/rightArea;
+            int indexOfMatrix = 0;
+            switch (type){
+                case 0:{
+                    indexOfMatrix = 61;
+                    break;
+                }
+                case 1:{
+                    indexOfMatrix = 28;
+                    break;
+                }
+                case 2:{
+                    indexOfMatrix = 31;
+                    break;
+                }
+            }
+            if (ratio > 0.95 && ratio < 1.05){
+                newModels.get(0).getOnePicture(indexOfMatrix,"splitPic"+count++);
+            }
         }
     }
 
