@@ -3,6 +3,7 @@ import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.imgcodecs.Imgcodecs;
+import org.opencv.imgproc.Imgproc;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -783,6 +784,43 @@ public class Model {
         Imgcodecs.imwrite("D:\\Desktop\\"+pictureName+".jpg", picture);
     }
 
+    private double[] getZernikeMoments(int index){
+        Matrix matrix = matrixList.get(index);
+        int[][] pictureData = getPictureWithFrameData(matrix);
+        for (int i = 0; i < pictureData.length; i++){
+            for (int j = 0; j < pictureData[0].length; j++){
+                pictureData[i][j] = 255 - pictureData[i][j];
+            }
+        }
+        return Moment.getZernikeMoments(pictureData);
+    }
+
+    private double[] getKrawtchoukMoments(int index){
+        Matrix matrix = matrixList.get(index);
+        int[][] pictureData = getPictureWithFrameData(matrix);
+        for (int i = 0; i < pictureData.length; i++){
+            for (int j = 0; j < pictureData[0].length; j++){
+                pictureData[i][j] = 255 - pictureData[i][j];
+            }
+        }
+        return Moment.getKrawtchoukMoments(pictureData);
+    }
+
+    public double[] getDescriptor(int index){
+        double[] descriptor = new double[24];
+        double[] zernikeMoments = getZernikeMoments(index);
+        double mz = Math.sqrt(Arrays.stream(zernikeMoments).map(zernikeMoment->zernikeMoment*zernikeMoment).sum());
+        double[] krawtchoukMoments = getKrawtchoukMoments(index);
+        double mk = Math.sqrt(Arrays.stream(krawtchoukMoments).map(krawtchoukMoment->krawtchoukMoment*krawtchoukMoment).sum());
+        for (int i = 0; i < 24; i++){
+            if (i < 15)
+                descriptor[i] = zernikeMoments[i]/mz;
+            else
+                descriptor[i] = krawtchoukMoments[i-15]/mk;
+        }
+        return descriptor;
+    }
+
     public double getAllAreaOfTriangles(){
         double ans = 0;
         for (Triangle triangle : triangleList)
@@ -797,15 +835,14 @@ public class Model {
         for (int index =0 ; index < 62; index++) {
             Matrix matrix = matrixList.get(index);
             int[][] pictureData = getPictureWithFrameData(matrix);
-            int[] data = new int[512 * 512];
-            int index2 = 0;
+            Mat picture = new Mat(512, 512, CvType.CV_8U);
             for (int i = 0; i < 512; i++) {
                 for (int j = 0; j < 512; j++) {
-                    data[index2++] = pictureData[i][j];
+                    picture.put(i, j, 255 - pictureData[i][j]);
                 }
             }
-            Mat picture = new Mat(512, 512, CvType.CV_32S);
-            picture.put(0, 0, data);
+            int threshold = 20;
+            Imgproc.Canny(picture, picture, threshold, threshold * 3, 3, true);
             String path = filePath + "\\" + index + ".jpg";
             System.out.println("生成第"+index+"张图片");
             Imgcodecs.imwrite(path, picture);
