@@ -1,5 +1,6 @@
 import com.sun.deploy.util.StringUtils;
 
+import java.io.File;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -13,15 +14,23 @@ public class Main {
             Model model = new Model(
                     "D:\\Desktop\\文件\\任务\\毕业设计\\3D\\ESB零件库\\Rectangular-Cubic-Prism\\Rectangular-Cubic Prism\\Bearing Blocks\\advgr01.STL");
 //            model.getPictures("D:\\Desktop\\2");
-            double[] d1 = model.getDescriptor(61);
-            double[] d2 = model.getDescriptor(61);
-            double ans = 0;
-            for (int i = 0;i< d1.length;i++){
-                System.out.println(d1[i]);
-                System.out.println(d2[i]);
-                ans += Util.integerPow(d1[i] - d2[i],2);
+//            model.extractDescriptor("D:\\Desktop\\3");
+            File file = new File("D:\\Desktop\\3\\advgr01.STL_DATA.txt");
+            Scanner sc = new Scanner(file);
+            String fileLine = null;
+            Map<Integer,List<Integer>> dataMap = new HashMap<>();
+            int index = 0;
+            while (sc.hasNext()){
+                fileLine = sc.nextLine();
+                String[] numberList = fileLine.split("#");
+                List<Integer> tempList = new ArrayList<>();
+                for (int i = 0; i < numberList.length; i++){
+                    tempList.add(Integer.parseInt(numberList[i]));
+                }
+                dataMap.put(index++,tempList);
             }
-            System.out.println(Math.sqrt(ans));
+            model.calculateFrequentItem("D:\\Desktop\\3",dataMap);
+
         }catch (Exception e){
             e.printStackTrace();
         }

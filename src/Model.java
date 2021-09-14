@@ -5,16 +5,17 @@ import org.opencv.core.Mat;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * @author Liuhaifeng
  * @date 2021/8/28 - 20:20
  */
 public class Model {
+    private String modelName;
+
     /**
      * 保存所有的三角形
      */
@@ -56,6 +57,11 @@ public class Model {
      * 读取模型的所有点的数据，提取其中的边，并且归一化模型数据
      */
     public Model(String modelPath) throws IOException {
+        if (null != modelPath && !"".equals(modelPath)){
+            String[] paths = modelPath.split("\\\\");
+            String modelName = paths[paths.length-1];
+            this.modelName = modelName;
+        }
         BufferedReader in = new BufferedReader(new FileReader(modelPath));
         initialMinMaxValue(this.minMaxValue);
         String str;
@@ -784,25 +790,118 @@ public class Model {
         Imgcodecs.imwrite("D:\\Desktop\\"+pictureName+".jpg", picture);
     }
 
+    public double getDistance(double[] d1,double[] d2){
+        double ans = 0;
+        for (int i = 0;i< d1.length;i++){
+            ans += Util.integerPow(d1[i] - d2[i],2);
+        }
+        return Util.remainPoint4(Math.sqrt(ans));
+    }
+
+    public void extractDescriptor(String path) throws Exception{
+        String pathName1 = path + "\\" + this.modelName + ".txt";
+        String pathName2 = path + "\\" + this.modelName + "_DATA" + ".txt";
+        File file1 = new File(pathName1);
+        File file2 = new File(pathName2);
+        Writer out1 = new FileWriter(file1);
+        Writer out2 = new FileWriter(file2);
+        Map<Integer,List<Integer>> dataMap = new HashMap<>();
+        double[][] descriptorsOfModel = new double[62][24];
+        for (int i = 0; i < 62; i++){
+            System.out.println("正在提取第"+i+"张图片的描述符");
+            descriptorsOfModel[i] = getDescriptor(i);
+        }
+        for (int i = 0; i < 62; i++){
+            List<Integer> tempList = dataMap.getOrDefault(i, new ArrayList<>());
+            tempList.add(i);
+            for (int j = i+1; j < 62; j++){
+                double distance = getDistance(descriptorsOfModel[i],descriptorsOfModel[j]);
+                out1.write(Double.toString(distance) + "#");
+                if (distance < 0.1){
+                    tempList.add(j);
+                    List<Integer> tempList2 = dataMap.getOrDefault(j, new ArrayList<>());
+                    tempList2.add(i);
+                    dataMap.put(j, tempList2);
+                }
+            }
+            dataMap.put(i, tempList);
+            out1.write("\n");
+        }
+        out1.close();
+
+        for (int index = 0; index < 62; index++){
+            List<Integer> tempList = dataMap.get(index);
+            for (Integer i : tempList){
+                out2.write(i.toString() + "#");
+            }
+            out2.write("\n");
+        }
+        out2.close();
+
+        calculateFrequentItem(path,dataMap);
+
+        return;
+    }
+
+    public void calculateFrequentItem(String path,Map<Integer,List<Integer>> dataMap) throws Exception{
+        String pathName = path + "\\" + this.modelName + "_FrequentItem.txt";
+        File file = new File(pathName);
+        Writer out = new FileWriter(file);
+        List<Integer> needDeletedPicIndex = new ArrayList<>();
+
+        for (int i = 0; i < 62; i++){
+            for (int j = i+1; j < 62; j++){
+                List<Integer> newItems = new ArrayList<>();
+                newItems.add(i);
+                newItems.add(j);
+                if (getConfidence(newItems,dataMap) > 0.9){
+                    needDeletedPicIndex.add(j);
+                }
+            }
+        }
+        needDeletedPicIndex = needDeletedPicIndex.stream().distinct().collect(Collectors.toList());
+        for (Integer index : needDeletedPicIndex){
+            out.write(index.toString());
+            out.write("\n");
+        }
+        out.close();
+        return;
+    }
+
+    private double getSupport(List<Integer> items,Map<Integer,List<Integer>> dataMap){
+        int count = 0;
+        for (int index = 0; index < 62; index++){
+            List<Integer> tempList = dataMap.get(index);
+            if (tempList.containsAll(items)){
+                ++count;
+            }
+        }
+        return Util.remainPoint4(count / 62.0);
+    }
+
+    private double getConfidence(List<Integer> items,Map<Integer,List<Integer>> dataMap){
+        int x = items.get(0);
+        int y = items.get(1);
+        List<Integer> tempList = new ArrayList<>();
+        tempList.add(x);
+        double supportX = getSupport(tempList,dataMap);
+        tempList.add(y);
+        double supportXAndY = getSupport(tempList,dataMap);
+        double confidence = supportXAndY / supportX;
+        return Util.remainPoint4(confidence);
+    }
+
     private double[] getZernikeMoments(int index){
         Matrix matrix = matrixList.get(index);
         int[][] pictureData = getPictureWithFrameData(matrix);
-        for (int i = 0; i < pictureData.length; i++){
-            for (int j = 0; j < pictureData[0].length; j++){
-                pictureData[i][j] = 255 - pictureData[i][j];
-            }
-        }
+        pictureData = getAfterCannyPictureData(pictureData,20);
         return Moment.getZernikeMoments(pictureData);
     }
 
     private double[] getKrawtchoukMoments(int index){
         Matrix matrix = matrixList.get(index);
         int[][] pictureData = getPictureWithFrameData(matrix);
-        for (int i = 0; i < pictureData.length; i++){
-            for (int j = 0; j < pictureData[0].length; j++){
-                pictureData[i][j] = 255 - pictureData[i][j];
-            }
-        }
+        pictureData = getAfterCannyPictureData(pictureData,20);
         return Moment.getKrawtchoukMoments(pictureData);
     }
 
@@ -847,6 +946,25 @@ public class Model {
             System.out.println("生成第"+index+"张图片");
             Imgcodecs.imwrite(path, picture);
         }
+    }
+
+    public int[][] getAfterCannyPictureData(int[][] pictureData,int threshold){
+        Mat picture = new Mat(pictureData.length, pictureData[0].length, CvType.CV_8U);
+        for (int i = 0; i < pictureData.length ; i++) {
+            for (int j = 0; j < pictureData[0].length; j++) {
+                picture.put(i, j, 255 - pictureData[i][j]);
+            }
+        }
+        Imgproc.Canny(picture, picture, threshold, threshold * 3, 3, true);
+        picture.convertTo(picture,CvType.CV_32S);
+        int[] newData = new int[pictureData.length * pictureData[0].length];
+        picture.get(0,0,newData);
+        for (int i = 0; i < 512; i++) {
+            for (int j = 0; j < 512; j++) {
+                pictureData[i][j] = newData[i * pictureData.length + j];
+            }
+        }
+        return pictureData;
     }
 
     public void getSplitPicture(){
